@@ -262,7 +262,8 @@ app.post("/api/vision-cutout-eligible", upload.single("image"), async (req, res)
     }
 
     const parsed = parseAnthropicVisionJson(textBlock);
-    const personMain = !!(parsed && parsed.person_main_subject === true);
+    const pm = parsed?.person_main_subject;
+    const personMain = pm === true || pm === "true" || pm === 1;
     const tags = personMain ? ["person_main", "person"] : [];
 
     console.log("[vision-cutout] Claude OK", displayName, "person_main_subject=", personMain);

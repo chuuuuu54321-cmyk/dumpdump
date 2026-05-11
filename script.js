@@ -1189,7 +1189,8 @@ async function analyzeOnePhotoVisionCutoutEligibility(photo) {
       fd.append("image", photo.file, photo.file.name || "photo.jpg");
       const res = await fetch("/api/vision-cutout-eligible", { method: "POST", body: fd });
       const data = await res.json().catch(() => ({}));
-      const ok = data.person_main_subject === true;
+      const pm = data.person_main_subject;
+      const ok = pm === true || pm === "true" || pm === 1;
       const tags = Array.isArray(data.tags) ? data.tags : [];
       applyVisionCutoutResult(photo.id, ok, tags);
     } catch (err) {
@@ -1699,50 +1700,62 @@ async function enhanceResultSceneAsync(gen, ordered, pk, needAiText) {
   const copyPromise = needAiText ? fetchCollageCopyFromApi(ordered, pk) : null;
 
   try {
-    const vibeKey = await vibePromise;
-    if (gen !== renderResultCollageGeneration) return;
-
-    // Update stickers quickly as soon as vibe is known.
-    try {
-      const fastScene = buildResultSceneFast(ordered);
-      const stickerRand = mulberry32((seedFromPhotos(ordered) ^ 0xbadc0fee) >>> 0);
-      const stickerPack = chooseVisionStickerPlacements(ordered, fastScene.frames ?? [], fastScene.cutouts ?? [], vibeKey, stickerRand);
-      const stickersEl = document.querySelector("#resultStickers");
-      if (stickersEl) renderStickerAssetLayer(stickersEl, stickerPack.placements);
-    } catch {
-      /* ignore */
-    }
-
-    if (copyPromise) {
-      const copy = await copyPromise;
-      if (gen !== renderResultCollageGeneration) return;
-      const mainHasUserText = String(editableText.main?.innerText || "").trim().length > 0;
-      const subHasUserText = String(editableText.sub?.innerText || "").trim().length > 0;
-      if (!mainHasUserText && !subHasUserText) {
-        applyCollageCopyToEditable(copy);
-        state.collageTextPhotoKeyApplied = pk;
-      }
-    }
-
     await eligibilityPromise;
     if (gen !== renderResultCollageGeneration) return;
 
-    // Cutouts are heavier: once ready, rebuild full layers (frames/cutouts/stickers) without touching title layout.
+    console.log("[enhanceResultSceneAsync] vision cutout eligibility settled", {
+      pk,
+      photos: ordered.map((p) => ({
+        id: p.id,
+        name: p.file?.name,
+        eligible: state.visionCutoutEligibleByPhotoId[p.id],
+        ratio: p.ratio,
+      })),
+    });
+
     const rand = mulberry32(seedFromPhotos(ordered));
     const cutoutCandidates = selectCutoutCandidates(ordered, rand);
-    const preparedList =
-      cutoutCandidates.length > 0 ? await Promise.all(cutoutCandidates.map((p) => prepareCutoutPhoto(p))) : [];
+    console.log(
+      "[enhanceResultSceneAsync] cutout candidates after Vision",
+      cutoutCandidates.length,
+      cutoutCandidates.map((p) => p.file?.name || p.id),
+    );
 
+    const preparedListPromise =
+      cutoutCandidates.length > 0 ? Promise.all(cutoutCandidates.map((p) => prepareCutoutPhoto(p))) : Promise.resolve([]);
+
+    const [, , preparedList] = await Promise.all([vibePromise, copyPromise ?? Promise.resolve(null), preparedListPromise]);
     if (gen !== renderResultCollageGeneration) return;
+
+    if (needAiText && copyPromise) {
+      const mainHasUserText = String(editableText.main?.innerText || "").trim().length > 0;
+      const subHasUserText = String(editableText.sub?.innerText || "").trim().length > 0;
+      if (!mainHasUserText && !subHasUserText) {
+        const cached = state.collageCopyByPhotoKey?.key === pk ? state.collageCopyByPhotoKey : null;
+        if (cached) {
+          applyCollageCopyToEditable(cached);
+          state.collageTextPhotoKeyApplied = pk;
+        }
+      }
+    }
 
     const successfulPairs = [];
     cutoutCandidates.forEach((p, i) => {
       const prep = preparedList[i];
-      if (prep.source === "remove-bg") successfulPairs.push({ photo: p, prepared: prep });
+      if (prep && prep.source === "remove-bg") {
+        successfulPairs.push({ photo: p, prepared: prep });
+      } else if (prep) {
+        console.warn("[enhanceResultSceneAsync] cutout candidate did not use remove.bg PNG", {
+          file: p.file?.name,
+          source: prep.source,
+        });
+      }
     });
 
     const successfulIds = new Set(successfulPairs.map((s) => s.photo.id));
     const remaining = ordered.filter((p) => !successfulIds.has(p.id));
+
+    const vibeKey = normalizeVibeKey(state.collageVibeByPhotoKey?.key === pk ? state.collageVibeByPhotoKey.vibe : "fallback");
 
     const { cutouts, frames, stickerLayoutPolaroids } = buildFixedResultLayout(ordered, successfulPairs, remaining);
     const stickerRand = mulberry32((seedFromPhotos(ordered) ^ 0xbadc0fee) >>> 0);
@@ -1763,6 +1776,11 @@ async function enhanceResultSceneAsync(gen, ordered, pk, needAiText) {
       stickers: stickerPack.placements,
       tapeSortedFrameIndex,
     };
+
+    console.log("[enhanceResultSceneAsync] re-render result with cutouts", {
+      cutoutSlots: cutouts.length,
+      removeBgOk: successfulPairs.length,
+    });
 
     renderResultDomFromScene(fullScene, ordered.length, { applyTitleLayout: false });
   } catch (err) {
