@@ -821,8 +821,3 @@ button {
   height: 44px;
 }
 
-@media (max-width: 392px), (max-height: 851px) {
-  .phone-screen {
-    transform: scale(0.84);
-  }
-}
