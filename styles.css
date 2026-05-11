@@ -56,13 +56,28 @@ button {
   overflow: hidden;
   border-radius: 0;
   background-color: #f5f0eb;
-  background:
-    url("https://www.figma.com/api/mcp/asset/4973b22a-905c-411f-8656-71b45f69d438") center -16px / 430px 996px no-repeat,
-    var(--paper);
   box-shadow: none;
 }
 
-.phone-screen::after {
+.phone-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 393px;
+  height: 852px;
+  transform: translate(-50%, -50%) scale(var(--ui-scale));
+  transform-origin: center center;
+  overflow: hidden;
+  background:
+    url("https://www.figma.com/api/mcp/asset/4973b22a-905c-411f-8656-71b45f69d438") center -16px / 430px 996px no-repeat,
+    var(--paper);
+}
+
+.phone-screen {
+  --ui-scale: min(calc(100vw / 393), calc(100vh / 852));
+}
+
+.phone-stage::after {
   content: "";
   position: absolute;
   inset: 0;

@@ -2114,6 +2114,7 @@ async function exportCollageToCanvas() {
 
 document.querySelector("#openUpload").addEventListener("click", (event) => {
   event.stopPropagation();
+  resetAllUploadPhotos();
   showScreen("upload");
   openPhotoPicker();
 });
@@ -2124,6 +2125,7 @@ document.querySelector('[data-screen="start"]').addEventListener("click", () => 
 
 document.querySelector('[data-screen="intro"]').addEventListener("click", (event) => {
   if (event.target.id === "openUpload") return;
+  resetAllUploadPhotos();
   showScreen("upload");
   openPhotoPicker();
 });

@@ -12,72 +12,74 @@
   <body>
     <main class="app-shell">
       <section class="phone-screen" data-current="start" aria-label="Dump Dump photo collage maker">
-        <section class="screen active" data-screen="start">
-          <div class="brand-center logo-big" aria-label="Dump Dump">
-            <span>Dump</span>
-            <span>Dump</span>
-          </div>
-        </section>
-
-        <section class="screen" data-screen="intro">
-          <div class="sketch-panel intro-panel">
-            <div class="cat-doodle" aria-hidden="true">≽^•⩊•^≼</div>
-            <h1>Dump<br />everything<br />here :p</h1>
-            <p>dump your life lately</p>
-          </div>
-          <button class="pill-button" id="openUpload" type="button">Upload Photos</button>
-          <div class="brand-bottom logo-small" aria-hidden="true">
-            <span>Dump</span>
-            <span>Dump</span>
-          </div>
-        </section>
-
-        <section class="screen" data-screen="upload">
-          <div class="upload-header">
-            <div class="cat-doodle small" aria-hidden="true">≽^•⩊•^≼</div>
-            <h2>little things from lately</h2>
-          </div>
-          <div class="sketch-panel upload-panel">
-            <div class="photo-grid" id="photoGrid"></div>
-            <button class="pill-button" id="makeDump" type="button">Make my dump!</button>
-            <button type="button" class="upload-reset-hit" id="uploadResetHit" aria-label="Clear all photos and start over"></button>
-          </div>
-          <div class="brand-bottom logo-small" aria-hidden="true">
-            <span>Dump</span>
-            <span>Dump</span>
-          </div>
-          <input id="photoInput" type="file" accept="image/*" multiple hidden />
-        </section>
-
-        <section class="screen screen--loading" data-screen="loading" aria-busy="true" aria-label="Loading">
-          <div class="loading-full">
-            <img class="loading-full__base" src="./assets/reading.png" alt="" decoding="async" />
-            <span class="loading-full__dots" aria-hidden="true">...</span>
-          </div>
-        </section>
-
-        <section class="screen result-screen" data-screen="result">
-          <div class="collage-stage" id="collageStage">
-            <div class="result-paper-stack" aria-hidden="true">
-              <div class="result-paper-base"></div>
-              <div class="result-paper-grain"></div>
-              <div class="result-paper-wash"></div>
+        <div class="phone-stage">
+          <section class="screen active" data-screen="start">
+            <div class="brand-center logo-big" aria-label="Dump Dump">
+              <span>Dump</span>
+              <span>Dump</span>
             </div>
-            <div class="result-brand-mark" aria-hidden="true"></div>
-            <div class="result-dynamic" id="resultDynamic"></div>
-            <div class="result-cutouts" id="resultCutouts" aria-hidden="true"></div>
-            <div class="result-stickers" id="resultStickers" aria-hidden="true"></div>
-            <div class="result-text-layer">
-              <div class="editable-copy result-title-main" contenteditable="true" spellcheck="false"></div>
-              <div class="editable-copy result-title-sub" contenteditable="true" spellcheck="false"></div>
+          </section>
+
+          <section class="screen" data-screen="intro">
+            <div class="sketch-panel intro-panel">
+              <div class="cat-doodle" aria-hidden="true">≽^•⩊•^≼</div>
+              <h1>Dump<br />everything<br />here :p</h1>
+              <p>dump your life lately</p>
             </div>
-            <canvas id="exportCanvas" width="1179" height="2556" aria-hidden="true"></canvas>
-          </div>
-          <div class="result-actions">
-            <button class="ghost-button" id="editAgain" type="button">Edit photos</button>
-            <button class="pill-button" id="saveImage" type="button">Save image</button>
-          </div>
-        </section>
+            <button class="pill-button" id="openUpload" type="button">Upload Photos</button>
+            <div class="brand-bottom logo-small" aria-hidden="true">
+              <span>Dump</span>
+              <span>Dump</span>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="upload">
+            <div class="upload-header">
+              <div class="cat-doodle small" aria-hidden="true">≽^•⩊•^≼</div>
+              <h2>little things from lately</h2>
+            </div>
+            <div class="sketch-panel upload-panel">
+              <div class="photo-grid" id="photoGrid"></div>
+              <button class="pill-button" id="makeDump" type="button">Make my dump!</button>
+              <button type="button" class="upload-reset-hit" id="uploadResetHit" aria-label="Clear all photos and start over"></button>
+            </div>
+            <div class="brand-bottom logo-small" aria-hidden="true">
+              <span>Dump</span>
+              <span>Dump</span>
+            </div>
+            <input id="photoInput" type="file" accept="image/*" multiple hidden />
+          </section>
+
+          <section class="screen screen--loading" data-screen="loading" aria-busy="true" aria-label="Loading">
+            <div class="loading-full">
+              <img class="loading-full__base" src="./assets/reading.png" alt="" decoding="async" />
+              <span class="loading-full__dots" aria-hidden="true">...</span>
+            </div>
+          </section>
+
+          <section class="screen result-screen" data-screen="result">
+            <div class="collage-stage" id="collageStage">
+              <div class="result-paper-stack" aria-hidden="true">
+                <div class="result-paper-base"></div>
+                <div class="result-paper-grain"></div>
+                <div class="result-paper-wash"></div>
+              </div>
+              <div class="result-brand-mark" aria-hidden="true"></div>
+              <div class="result-dynamic" id="resultDynamic"></div>
+              <div class="result-cutouts" id="resultCutouts" aria-hidden="true"></div>
+              <div class="result-stickers" id="resultStickers" aria-hidden="true"></div>
+              <div class="result-text-layer">
+                <div class="editable-copy result-title-main" contenteditable="true" spellcheck="false"></div>
+                <div class="editable-copy result-title-sub" contenteditable="true" spellcheck="false"></div>
+              </div>
+              <canvas id="exportCanvas" width="1179" height="2556" aria-hidden="true"></canvas>
+            </div>
+            <div class="result-actions">
+              <button class="ghost-button" id="editAgain" type="button">Edit photos</button>
+              <button class="pill-button" id="saveImage" type="button">Save image</button>
+            </div>
+          </section>
+        </div>
       </section>
     </main>
     <script src="./script.js"></script>
