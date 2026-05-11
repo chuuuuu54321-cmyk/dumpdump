@@ -140,9 +140,11 @@ function sanitizeCollageCopyField(value, maxLen) {
 
 const VISION_CUTOUT_PROMPT = `Look at this image and answer one question:
 
-"Is a real human (person) clearly the MAIN subject of the photo — what the viewer is meant to focus on first?"
+"Is a real human clearly the MAIN subject of the photo — the thing the viewer is meant to notice first?"
 
-Answer true ONLY when an identifiable person (face and/or body as the primary focus) is the dominant subject — e.g. portrait, selfie, clear people shot.
+"Human" includes every age: newborn, baby, toddler, child, teen, and adult. Do NOT treat infants or kids differently from adults. If a baby or child is clearly the dominant focus (portrait, close-up, held baby as the hero of the frame, etc.), answer true the same as you would for an adult portrait.
+
+Answer true ONLY when one real person (any age) is clearly the primary subject — their face and/or body fills the intent of the shot (portrait, selfie, family shot where one child/baby is clearly the main focus, etc.).
 
 Answer false for:
 - Buildings, architecture, or cityscapes as the main subject
