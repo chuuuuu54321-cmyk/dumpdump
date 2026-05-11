@@ -173,8 +173,8 @@ button {
 
 .loading-full__dots {
   position: absolute;
-  top: 62%;
-  left: 50%;
+  top: 58%;
+  left: 43%;
   transform: translateX(-50%);
   z-index: 1;
   font-family: "Yabonelist", "Comic Sans MS", cursive;

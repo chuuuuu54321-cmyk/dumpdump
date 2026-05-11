@@ -1557,10 +1557,35 @@ function renderStickerAssetLayer(container, stickerPlacements) {
   });
 }
 
-/** @returns {Promise<boolean>} `true` if the result DOM was rebuilt successfully. */
-async function renderResultCollage() {
+function buildResultSceneFast(ordered) {
   refreshCutoutDebugFlagsFromUrl();
 
+  const sorted = ordered.length > 8 ? ordered.slice(0, 8) : ordered;
+  const vibeKey = normalizeVibeKey(state.collageVibeByPhotoKey?.key === collagePhotosKey(sorted) ? state.collageVibeByPhotoKey.vibe : "fallback");
+
+  const { cutouts, frames, stickerLayoutPolaroids } = buildFixedResultLayout(sorted, [], [...sorted]);
+
+  const stickerRand = mulberry32((seedFromPhotos(sorted) ^ 0xbadc0fee) >>> 0);
+  const stickerPack = chooseVisionStickerPlacements(sorted, frames, cutouts, vibeKey, stickerRand);
+
+  const sortedFramesForTape = [...frames].sort((a, b) => a.z - b.z);
+  const firstPolaroidIdx = sortedFramesForTape.findIndex((f) => f.kind === "polaroid");
+  const tapeSortedFrameIndex = firstPolaroidIdx >= 0 ? firstPolaroidIdx : -1;
+
+  return {
+    heroes: [],
+    polaroids: stickerLayoutPolaroids,
+    frames,
+    cutouts,
+    mood: averageWarmth(sorted),
+    sorted,
+    moodTags: stickerPack.moodTags,
+    stickers: stickerPack.placements,
+    tapeSortedFrameIndex,
+  };
+}
+
+function renderResultDomFromScene(scene, photoCount, { applyTitleLayout }) {
   const dynamic = document.querySelector("#resultDynamic");
   const cutoutsEl = document.querySelector("#resultCutouts");
   const stickersEl = document.querySelector("#resultStickers");
@@ -1570,46 +1595,7 @@ async function renderResultCollage() {
     return false;
   }
 
-  const photos = sortedPhotosForCollage();
-  if (!photos.length) {
-    dynamic.innerHTML = "";
-    if (cutoutsEl) cutoutsEl.innerHTML = "";
-    stickersEl.innerHTML = "";
-    setEditableMultiline(editableText.main, "");
-    setEditableMultiline(editableText.sub, "");
-    state.collageTextPhotoKeyApplied = null;
-    return false;
-  }
-
-  const gen = ++renderResultCollageGeneration;
-  const ordered = photos.length > 8 ? photos.slice(0, 8) : photos;
-  const pk = collagePhotosKey(ordered);
-  const needAiText = pk !== state.collageTextPhotoKeyApplied;
-
-  /** Build scene (+ optional parallel Claude collage copy). If this throws, keep previous DOM. */
-  let scene;
-  try {
-    if (needAiText) {
-      const [sceneResult, copy] = await Promise.all([
-        buildResultScene(),
-        fetchCollageCopyFromApi(ordered, pk),
-      ]);
-      scene = sceneResult;
-      if (gen !== renderResultCollageGeneration) return false;
-      applyCollageCopyToEditable(copy);
-      state.collageTextPhotoKeyApplied = pk;
-    } else {
-      scene = await buildResultScene();
-      if (gen !== renderResultCollageGeneration) return false;
-    }
-  } catch (err) {
-    console.error("[renderResultCollage] buildResultScene failed:", err);
-    return false;
-  }
-
-  if (gen !== renderResultCollageGeneration) return false;
-
-  applyResultTitleTextLayout(ordered.length);
+  if (applyTitleLayout) applyResultTitleTextLayout(photoCount);
 
   dynamic.innerHTML = "";
   if (cutoutsEl) cutoutsEl.innerHTML = "";
@@ -1688,6 +1674,123 @@ async function renderResultCollage() {
     loadStickerRaster(s.def.file);
   });
 
+  return true;
+}
+
+async function enhanceResultSceneAsync(gen, ordered, pk, needAiText) {
+  const vibePromise = fetchVisionVibeStickers(ordered, pk);
+  const eligibilityPromise = ensureVisionCutoutEligibility(ordered);
+  const copyPromise = needAiText ? fetchCollageCopyFromApi(ordered, pk) : null;
+
+  try {
+    const vibeKey = await vibePromise;
+    if (gen !== renderResultCollageGeneration) return;
+
+    // Update stickers quickly as soon as vibe is known.
+    try {
+      const fastScene = buildResultSceneFast(ordered);
+      const stickerRand = mulberry32((seedFromPhotos(ordered) ^ 0xbadc0fee) >>> 0);
+      const stickerPack = chooseVisionStickerPlacements(ordered, fastScene.frames ?? [], fastScene.cutouts ?? [], vibeKey, stickerRand);
+      const stickersEl = document.querySelector("#resultStickers");
+      if (stickersEl) renderStickerAssetLayer(stickersEl, stickerPack.placements);
+    } catch {
+      /* ignore */
+    }
+
+    if (copyPromise) {
+      const copy = await copyPromise;
+      if (gen !== renderResultCollageGeneration) return;
+      const mainHasUserText = String(editableText.main?.innerText || "").trim().length > 0;
+      const subHasUserText = String(editableText.sub?.innerText || "").trim().length > 0;
+      if (!mainHasUserText && !subHasUserText) {
+        applyCollageCopyToEditable(copy);
+        state.collageTextPhotoKeyApplied = pk;
+      }
+    }
+
+    await eligibilityPromise;
+    if (gen !== renderResultCollageGeneration) return;
+
+    // Cutouts are heavier: once ready, rebuild full layers (frames/cutouts/stickers) without touching title layout.
+    const rand = mulberry32(seedFromPhotos(ordered));
+    const cutoutCandidates = selectCutoutCandidates(ordered, rand);
+    const preparedList =
+      cutoutCandidates.length > 0 ? await Promise.all(cutoutCandidates.map((p) => prepareCutoutPhoto(p))) : [];
+
+    if (gen !== renderResultCollageGeneration) return;
+
+    const successfulPairs = [];
+    cutoutCandidates.forEach((p, i) => {
+      const prep = preparedList[i];
+      if (prep.source === "remove-bg") successfulPairs.push({ photo: p, prepared: prep });
+    });
+
+    const successfulIds = new Set(successfulPairs.map((s) => s.photo.id));
+    const remaining = ordered.filter((p) => !successfulIds.has(p.id));
+
+    const { cutouts, frames, stickerLayoutPolaroids } = buildFixedResultLayout(ordered, successfulPairs, remaining);
+    const stickerRand = mulberry32((seedFromPhotos(ordered) ^ 0xbadc0fee) >>> 0);
+    const stickerPack = chooseVisionStickerPlacements(ordered, frames, cutouts, vibeKey, stickerRand);
+
+    const sortedFramesForTape = [...frames].sort((a, b) => a.z - b.z);
+    const firstPolaroidIdx = sortedFramesForTape.findIndex((f) => f.kind === "polaroid");
+    const tapeSortedFrameIndex = firstPolaroidIdx >= 0 ? firstPolaroidIdx : -1;
+
+    const fullScene = {
+      heroes: [],
+      polaroids: stickerLayoutPolaroids,
+      frames,
+      cutouts,
+      mood: averageWarmth(ordered),
+      sorted: ordered,
+      moodTags: stickerPack.moodTags,
+      stickers: stickerPack.placements,
+      tapeSortedFrameIndex,
+    };
+
+    renderResultDomFromScene(fullScene, ordered.length, { applyTitleLayout: false });
+  } catch (err) {
+    console.warn("[enhanceResultSceneAsync] failed:", err);
+  }
+}
+
+/** @returns {Promise<boolean>} `true` if the result DOM was rebuilt successfully. */
+async function renderResultCollage() {
+  refreshCutoutDebugFlagsFromUrl();
+
+  const photos = sortedPhotosForCollage();
+  if (!photos.length) {
+    const dynamic = document.querySelector("#resultDynamic");
+    const cutoutsEl = document.querySelector("#resultCutouts");
+    const stickersEl = document.querySelector("#resultStickers");
+    if (dynamic) dynamic.innerHTML = "";
+    if (cutoutsEl) cutoutsEl.innerHTML = "";
+    if (stickersEl) stickersEl.innerHTML = "";
+    setEditableMultiline(editableText.main, "");
+    setEditableMultiline(editableText.sub, "");
+    state.collageTextPhotoKeyApplied = null;
+    return false;
+  }
+
+  const gen = ++renderResultCollageGeneration;
+  const ordered = photos.length > 8 ? photos.slice(0, 8) : photos;
+  const pk = collagePhotosKey(ordered);
+  const needAiText = pk !== state.collageTextPhotoKeyApplied;
+
+  /** Fast render first — never block on Vision. Enhancements stream in later. */
+  let scene;
+  try {
+    scene = buildResultSceneFast(ordered);
+  } catch (err) {
+    console.error("[renderResultCollage] buildResultSceneFast failed:", err);
+    return false;
+  }
+
+  if (gen !== renderResultCollageGeneration) return false;
+  const ok = renderResultDomFromScene(scene, ordered.length, { applyTitleLayout: true });
+  if (!ok) return false;
+
+  void enhanceResultSceneAsync(gen, ordered, pk, needAiText);
   return true;
 }
 
