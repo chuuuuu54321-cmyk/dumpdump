@@ -1197,9 +1197,16 @@ async function analyzeOnePhotoVisionCutoutEligibility(photo) {
 
 /** Each photo at most one Vision request; parallel batch. */
 async function ensureVisionCutoutEligibility(photos) {
-  const pending = photos.filter((p) => !visionCutoutEligibilityCached(p.id));
-  if (!pending.length) return;
-  await Promise.all(pending.map((p) => analyzeOnePhotoVisionCutoutEligibility(p)));
+  const tasks = [];
+  for (let i = 0; i < photos.length; i += 1) {
+    const p = photos[i];
+    if (!p) continue;
+    if (visionCutoutEligibilityCached(p.id)) continue;
+    const existing = visionCutoutAnalysisPromisesByPhotoId.get(p.id);
+    tasks.push(existing || analyzeOnePhotoVisionCutoutEligibility(p));
+  }
+  if (!tasks.length) return;
+  await Promise.all(tasks);
 }
 
 /**
