@@ -1,0 +1,798 @@
+:root {
+  --paper: #f8f5ee;
+  --ink: #3c2a1d;
+  --soft-pink: #deb7ca;
+  --green: #6f9363;
+  --gold: #e7c86a;
+  --text: #292929;
+  --muted: #747474;
+}
+
+@font-face {
+  font-family: "Yabonelist";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/Yabonelist.ttf") format("truetype");
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #eee8dc;
+  color: var(--text);
+  font-family: "Courier New", Courier, monospace;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.phone-screen {
+  position: relative;
+  width: 393px;
+  height: 852px;
+  overflow: hidden;
+  background:
+    url("https://www.figma.com/api/mcp/asset/4973b22a-905c-411f-8656-71b45f69d438") center -16px / 430px 996px no-repeat,
+    var(--paper);
+  box-shadow: 0 18px 60px rgba(39, 27, 18, 0.15);
+}
+
+.phone-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.24;
+  background-image:
+    repeating-radial-gradient(circle at 12% 14%, rgba(60, 42, 29, 0.09) 0 0.7px, transparent 0.8px 7px);
+  mix-blend-mode: multiply;
+}
+
+.phone-screen:not([data-current="result"]) .status-bar {
+  display: none;
+}
+
+.status-bar {
+  position: absolute;
+  z-index: 20;
+  top: 12px;
+  left: 0;
+  width: 100%;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 34px;
+  color: #010101;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.island {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 122px;
+  height: 36px;
+  border-radius: 32px;
+  transform: translateX(-50%);
+  background: #000;
+}
+
+.signal {
+  font-size: 13px;
+  letter-spacing: -1px;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  padding-top: 72px;
+}
+
+.screen.active {
+  display: block;
+}
+
+.screen[data-screen="loading"].active {
+  display: flex;
+}
+
+.screen[data-screen="start"],
+.screen[data-screen="intro"],
+.screen[data-screen="upload"],
+.screen[data-screen="loading"] {
+  padding-top: 0;
+}
+
+.screen[data-screen="start"],
+.screen[data-screen="intro"],
+.screen[data-screen="upload"] {
+  background-position: center;
+  background-size: 393px 852px;
+  background-repeat: no-repeat;
+}
+
+.screen[data-screen="start"] {
+  background-image: url("./assets/screen-1.png");
+}
+
+.screen[data-screen="intro"] {
+  background-image: url("./assets/screen-2.png");
+}
+
+.screen[data-screen="upload"] {
+  background-image: url("./assets/screen-3.png");
+}
+
+/* Loading: reading.png + “...” overlay */
+.screen[data-screen="loading"] {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  overflow: hidden;
+  background-color: #f5f0eb;
+}
+
+.loading-full {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.loading-full__base {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  pointer-events: none;
+}
+
+.loading-full__dots {
+  position: absolute;
+  top: 62%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  font-family: "Yabonelist", "Comic Sans MS", cursive;
+  font-size: 38px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #1f1814;
+  pointer-events: none;
+}
+
+.screen[data-screen="start"] .brand-center,
+.screen[data-screen="intro"] .intro-panel,
+.screen[data-screen="intro"] .brand-bottom {
+  display: none;
+}
+
+.screen[data-screen="upload"] .upload-header,
+.screen[data-screen="upload"] .brand-bottom {
+  display: none;
+}
+
+#openUpload {
+  position: absolute;
+  left: 88px;
+  top: 505px;
+  width: 220px;
+  height: 92px;
+  z-index: 5;
+}
+
+.screen[data-screen="intro"] #openUpload {
+  opacity: 0;
+  box-shadow: none;
+}
+
+.screen[data-screen="start"],
+.screen[data-screen="intro"] {
+  cursor: pointer;
+}
+
+.brand-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.logo-big,
+.logo-small {
+  display: grid;
+  width: max-content;
+  color: #8e4c2f;
+  font-family: "Marker Felt", "Chalkboard SE", "Comic Sans MS", "Arial Rounded MT Bold", sans-serif;
+  font-weight: 900;
+  letter-spacing: -3px;
+  line-height: 0.72;
+  -webkit-text-stroke: 1px rgba(60, 42, 29, 0.15);
+  filter: drop-shadow(4px 4px 0 var(--gold));
+}
+
+.logo-big span:nth-child(2),
+.logo-small span:nth-child(2) {
+  color: var(--green);
+  filter: drop-shadow(4px 5px 0 #d8a5bf);
+}
+
+.logo-big {
+  font-size: 72px;
+}
+
+.logo-small {
+  font-size: 30px;
+}
+
+.brand-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+}
+
+.sketch-panel {
+  position: absolute;
+  left: 28px;
+  width: 328px;
+  background: rgba(255,255,255,.78);
+  border: 4px solid var(--ink);
+  border-radius: 5% 3% 8% 6% / 2% 5% 4% 8%;
+  box-shadow: 8px 8px 0 rgba(60, 42, 29, 0.98);
+}
+
+.intro-panel {
+  top: 166px;
+  height: 501px;
+  text-align: center;
+  padding-top: 74px;
+}
+
+.cat-doodle {
+  color: var(--ink);
+  font-family: "Comic Sans MS", "Trebuchet MS", cursive;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.cat-doodle.small {
+  font-size: 25px;
+}
+
+.intro-panel h1,
+.upload-header h2 {
+  margin: 34px 0 0;
+  font-family: "Marker Felt", "Chalkboard SE", "Comic Sans MS", "Arial Rounded MT Bold", sans-serif;
+  font-size: 38px;
+  line-height: 0.92;
+  letter-spacing: -0.4px;
+  color: #292929;
+  text-shadow: 0.4px 0 #292929, -0.4px 0 #292929, 0 0.4px #292929;
+}
+
+.intro-panel p,
+.muted {
+  margin: 20px 0 28px;
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: -0.4px;
+}
+
+.pill-button,
+.ghost-button {
+  height: 48px;
+  border-radius: 60px;
+  padding: 0 25px;
+  color: #fff;
+  background: var(--ink);
+  box-shadow: 4px 5px 0 var(--soft-pink);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.pill-button:active,
+.ghost-button:active {
+  transform: translate(3px, 4px);
+  box-shadow: 1px 1px 0 var(--soft-pink);
+}
+
+.ghost-button {
+  color: var(--ink);
+  background: #f8eee1;
+  border: 1px solid #e1cdb6;
+  box-shadow: 3px 4px 0 rgba(60, 42, 29, 0.2);
+}
+
+.upload-header {
+  position: absolute;
+  top: 93px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.upload-header h2 {
+  margin-top: 4px;
+  font-size: 24px;
+  line-height: 36px;
+}
+
+.upload-panel {
+  left: 0;
+  top: 0;
+  width: 393px;
+  height: 852px;
+  padding: 0;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.photo-grid {
+  position: absolute;
+  left: 49px;
+  top: 216px;
+  display: grid;
+  grid-template-columns: repeat(3, 87px);
+  grid-auto-rows: 117px;
+  justify-content: center;
+  gap: 12px 9px;
+  margin: 0;
+  isolation: isolate;
+  z-index: 2;
+  /* Grid gap shows container background — opaque paper so screen-3 PNG doesn’t show between slots */
+  background-color: #fffdf9;
+}
+
+.photo-grid::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 18px;
+  background:
+    repeating-linear-gradient(
+      -12deg,
+      rgba(225, 205, 182, 0.18) 0 1px,
+      transparent 1px 10px
+    ),
+    #fffdf9;
+  z-index: -1;
+}
+
+.photo-slot {
+  position: relative;
+  width: 87px;
+  height: 117px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f8eee1;
+  border: 1px solid #E1CDB6;
+  transform: rotate(var(--tilt));
+  box-shadow: none;
+}
+
+.photo-slot.empty {
+  box-shadow:
+    0 0 0 2px #fffdf9,
+    inset 0 0 0 1px rgba(255, 255, 255, 0.54);
+}
+
+.photo-slot:nth-child(7) {
+  grid-column: 1;
+  margin-left: 49px;
+}
+
+.photo-slot:nth-child(8) {
+  grid-column: 2;
+  margin-left: 49px;
+}
+
+.photo-slot label {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.photo-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.add-mark {
+  color: #9d7e65;
+}
+
+.photo-slot .remove-photo {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  /* Readable on both dark and light photo areas */
+  text-shadow:
+    0 0 1px rgba(60, 42, 29, 0.55),
+    0 1px 2px rgba(60, 42, 29, 0.35);
+  z-index: 3;
+}
+
+#makeDump {
+  position: absolute;
+  left: 86px;
+  top: 594px;
+  width: 220px;
+  height: 96px;
+  z-index: 5;
+  opacity: 0;
+  box-shadow: none;
+}
+
+/* Invisible tap target over the small reset line on upload background art (screen-3) */
+.upload-reset-hit {
+  position: absolute;
+  left: 50%;
+  top: 688px;
+  width: 232px;
+  height: 48px;
+  transform: translateX(-50%);
+  z-index: 6;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.result-screen {
+  padding-top: 0;
+  /* Fallback while PNG loads — matches template edges */
+  background-color: #ebe4dc;
+}
+
+.collage-stage {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+/* Full-bleed paper art; dynamic collage layers stack above (z-index). Export canvas uses the same image mapping. */
+.result-paper-stack {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.result-paper-base {
+  position: absolute;
+  inset: 0;
+  background-color: #ebe4dc;
+  background-image: url("./assets/result-paper-template.png");
+  background-size: 393px 852px;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.result-paper-grain,
+.result-paper-wash {
+  display: none;
+}
+
+/* Logo is part of result-paper-template.png — hide duplicate slice */
+.result-brand-mark {
+  display: none;
+}
+
+/* Polaroid / hero framed photos (lowest collage layer above paper). */
+.result-dynamic {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.result-dynamic img {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Person cutouts (remove.bg PNG) — above polaroids, below asset stickers & editable text */
+.result-cutouts {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.collage-item--cutout {
+  filter: drop-shadow(4px 10px 14px rgba(35, 24, 16, 0.28));
+}
+
+.collage-item--cutout .cutout-shell {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+}
+
+.collage-item--cutout .cutout-shell img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  display: block;
+}
+
+.result-stickers {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.result-text-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.result-text-layer .editable-copy {
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.result-text-layer .editable-copy.dragging-title {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.collage-item {
+  position: absolute;
+  transform-origin: center center;
+  filter: drop-shadow(3px 6px 10px rgba(35, 24, 16, 0.18));
+}
+
+/* `.collage-item--crop` hero/polaroid = framed crop (cover). Cutouts: `#resultCutouts` + `--cutout`. */
+.collage-item--hero .collage-photo-frame {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #faf8f5;
+  box-shadow: inset 0 0 0 1px rgba(60, 42, 29, 0.08);
+}
+
+.collage-item--hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.collage-item--plain .plain-photo-frame {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #faf8f5;
+  box-shadow:
+    inset 0 0 0 1px rgba(60, 42, 29, 0.1),
+    0 2px 8px rgba(35, 24, 16, 0.12);
+}
+
+.collage-item--plain .plain-photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.collage-item--polaroid .polaroid-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #f7f7f4;
+  border-radius: 3px;
+  padding: 7px 7px 22px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.65),
+    0 1px 0 rgba(60, 42, 29, 0.06);
+}
+
+.collage-item--polaroid .polaroid-shell img {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 1px;
+}
+
+/* tape1.svg — 첫 폴라로이드만 상단 중앙, 사진 위로 살짝 겹침 */
+.collage-item--polaroid .collage-frame-tape {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+  line-height: 0;
+}
+
+.collage-item--polaroid .collage-frame-tape img {
+  display: block;
+  width: 56px;
+  height: auto;
+}
+
+/* Asset stickers positioned by script from STICKER_PLACEMENT_SLOTS + tag-based picks */
+.sticker-slot {
+  position: absolute;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.sticker-slot img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter:
+    drop-shadow(1px 1px 0 rgba(60, 42, 29, 0.22))
+    drop-shadow(2px 4px 6px rgba(35, 24, 16, 0.2));
+}
+
+/* White / light glyphs on pale paper */
+.sticker-slot--light img {
+  filter:
+    drop-shadow(0 0 1.5px rgba(60, 42, 29, 0.55))
+    drop-shadow(0 0 4px rgba(60, 42, 29, 0.28))
+    drop-shadow(1px 2px 0 rgba(60, 42, 29, 0.2))
+    drop-shadow(2px 4px 6px rgba(35, 24, 16, 0.28));
+}
+
+.sticker-slot--label img {
+  filter:
+    drop-shadow(1px 1px 0 rgba(60, 42, 29, 0.18))
+    drop-shadow(2px 5px 5px rgba(35, 24, 16, 0.24))
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.35));
+}
+
+.sticker-slot--label.sticker-slot--light img {
+  filter:
+    drop-shadow(0 0 2px rgba(60, 42, 29, 0.45))
+    drop-shadow(0 0 5px rgba(60, 42, 29, 0.22))
+    drop-shadow(1px 2px 0 rgba(60, 42, 29, 0.22))
+    drop-shadow(2px 6px 5px rgba(35, 24, 16, 0.28))
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.25));
+}
+
+#exportCanvas {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: 393px;
+  height: 852px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.editable-copy {
+  position: absolute;
+  min-width: 68px;
+  padding: 2px 6px;
+  color: #2a211a;
+  font-family: "Nothing You Could Do", "Comic Sans MS", cursive;
+  text-align: center;
+  letter-spacing: 0.02em;
+  outline: 1px dashed transparent;
+  border-radius: 4px;
+}
+
+.result-screen .editable-copy {
+  background: transparent;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow: visible;
+}
+
+.editable-copy:focus {
+  background: rgba(248, 238, 225, 0.72);
+  outline-color: rgba(60, 42, 29, 0.45);
+}
+
+.result-text-layer .result-title-main,
+.result-text-layer .result-title-sub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 2px 8px;
+  overflow: visible;
+  white-space: pre-wrap;
+  text-align: center;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.result-title-main {
+  font-size: 28px;
+  line-height: 1.08;
+}
+
+.result-title-sub {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.result-actions {
+  position: absolute;
+  z-index: 8;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.result-actions .pill-button,
+.result-actions .ghost-button {
+  min-width: 132px;
+  height: 44px;
+}
+
+@media (max-width: 392px), (max-height: 851px) {
+  .phone-screen {
+    transform: scale(0.84);
+  }
+}
