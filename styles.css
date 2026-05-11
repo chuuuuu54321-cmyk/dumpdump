@@ -165,7 +165,7 @@ button {
   top: 0;
   width: 100%;
   height: 100vh;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
   display: block;
   pointer-events: none;
@@ -181,8 +181,28 @@ button {
   font-size: 38px;
   line-height: 1;
   letter-spacing: 0.02em;
-  color: #1f1814;
+  color: #2a1f1a;
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 1ch;
+  animation: loading-dots-steps 1.5s steps(3, end) infinite;
   pointer-events: none;
+}
+
+@keyframes loading-dots-steps {
+  0% {
+    width: 1ch;
+  }
+  33.333% {
+    width: 2ch;
+  }
+  66.666% {
+    width: 3ch;
+  }
+  100% {
+    width: 1ch;
+  }
 }
 
 .screen[data-screen="start"] .brand-center,
