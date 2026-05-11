@@ -51,14 +51,15 @@ button {
 
 .phone-screen {
   position: relative;
-  width: 393px;
-  height: 852px;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
+  border-radius: 0;
   background-color: #f5f0eb;
   background:
     url("https://www.figma.com/api/mcp/asset/4973b22a-905c-411f-8656-71b45f69d438") center -16px / 430px 996px no-repeat,
     var(--paper);
-  box-shadow: 0 18px 60px rgba(39, 27, 18, 0.15);
+  box-shadow: none;
 }
 
 .phone-screen::after {
