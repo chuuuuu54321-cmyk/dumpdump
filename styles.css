@@ -74,7 +74,7 @@ button {
 }
 
 .phone-screen {
-  --ui-scale: min(calc(100vw / 393), calc(100vh / 852));
+  --ui-scale: 1;
 }
 
 .phone-stage::after {
@@ -505,7 +505,7 @@ button {
   width: 220px;
   height: 96px;
   z-index: 5;
-  opacity: 0;
+  opacity: 1;
   box-shadow: none;
 }
 

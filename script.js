@@ -606,6 +606,15 @@ function resetAllUploadPhotos() {
   renderUploadGrid();
 }
 
+function updateUiScaleVar() {
+  const shell = document.querySelector(".phone-screen");
+  if (!shell) return;
+  const w = window.innerWidth || RESULT_STAGE_W;
+  const h = window.innerHeight || RESULT_STAGE_H;
+  const s = Math.min(w / RESULT_STAGE_W, h / RESULT_STAGE_H);
+  shell.style.setProperty("--ui-scale", String(s || 1));
+}
+
 function sortedPhotosForCollage() {
   return [...state.photos].sort((a, b) => {
     if (a.score.landscape !== b.score.landscape) return a.score.landscape ? -1 : 1;
@@ -2172,6 +2181,10 @@ photoInput.addEventListener("change", async (event) => {
   state.pickingPhotos = false;
 });
 
+resetAllUploadPhotos();
 renderUploadGrid();
 installResultTitleDrag();
+updateUiScaleVar();
+window.addEventListener("resize", updateUiScaleVar, { passive: true });
+window.addEventListener("orientationchange", updateUiScaleVar, { passive: true });
 setTimeout(() => showScreen("intro"), 900);
