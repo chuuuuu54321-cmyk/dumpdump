@@ -78,7 +78,9 @@ async function prepareImageForCollageCopyVision(inputBuffer, incomingMime) {
   return { buffer: out, mediaType: "image/jpeg" };
 }
 
-const COLLAGE_COPY_PROMPT = `You see photos for a tiny scrapbook collage UI.
+const COLLAGE_COPY_PROMPT = `CRITICAL: Respond in English ONLY. Never use Korean, Japanese, Chinese, or any non-English language, even if the photos contain Korean text or Korean people.
+
+You see photos for a tiny scrapbook collage UI.
 
 Infer the vibe (travel, birthday, friends, beach, city night, pets, etc.) and write VERY SHORT English — like handwritten stickers, not sentences.
 
