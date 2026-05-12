@@ -495,7 +495,10 @@ app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
   console.log(`[remove-bg] server: received "${displayName}" (${kb} KB)`);
 
   try {
-    const result = await removeBackground(req.file.buffer);
+    const mime = req.file.mimetype || "image/jpeg";
+    const normalized = await sharp(req.file.buffer, { failOn: "none", animated: false }).rotate().toBuffer();
+    const blob = new Blob([normalized], { type: mime });
+    const result = await removeBackground(blob);
     const buf = Buffer.from(await result.arrayBuffer());
 
     console.log(`[remove-bg] server: OK "${displayName}" png_bytes=${buf.length}`);
