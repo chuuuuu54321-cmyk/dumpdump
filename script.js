@@ -133,6 +133,8 @@ const state = {
   collageCopyByPhotoKey: null,
   /** Cached `/api/vision-vibe-stickers` `{ key, vibe }` — `vibe` is `party`|`nature_travel`|… */
   collageVibeByPhotoKey: null,
+  /** Background `exportCollageToCanvas` for Save — cleared when leaving result. */
+  exportPrefetch: { promise: null, snapshotKey: null, runId: 0 },
 };
 
 /** Re-read query flags when opening result so URL edits apply without a full reload when possible. */
@@ -468,7 +470,22 @@ function showScreen(name, options = {}) {
   screens.forEach((screen) => {
     screen.classList.toggle("active", screen.dataset.screen === name);
   });
-  if (name === "result" && !options.skipCollageRender) void renderResultCollage();
+
+  if (name !== "result") {
+    state.exportPrefetch.promise = null;
+    state.exportPrefetch.snapshotKey = null;
+    state.exportPrefetch.runId = 0;
+  }
+
+  if (name === "result") {
+    if (options.skipCollageRender) {
+      void startExportCanvasPrefetch();
+    } else {
+      void renderResultCollage().then((ok) => {
+        if (ok) void startExportCanvasPrefetch();
+      });
+    }
+  }
 }
 
 let makeDumpInFlight = false;
@@ -1787,6 +1804,7 @@ async function enhanceResultSceneAsync(gen, ordered, pk, needAiText) {
     });
 
     renderResultDomFromScene(fullScene, ordered.length, { applyTitleLayout: false });
+    if (state.screen === "result") void startExportCanvasPrefetch();
   } catch (err) {
     console.warn("[enhanceResultSceneAsync] failed:", err);
   }
@@ -1970,6 +1988,60 @@ function wrapCanvasTitleLines(ctx, text, maxW) {
   return lines;
 }
 
+/** Photo-set key + title DOM — prefetched PNG is only valid when this still matches. */
+function collageExportSnapshotKey() {
+  const photos = sortedPhotosForCollage();
+  if (!photos.length) return "";
+  const ordered = photos.length > 8 ? photos.slice(0, 8) : photos;
+  const pk = collagePhotosKey(ordered);
+  return `${pk}\n${editableText.main?.innerText ?? ""}\n${editableText.sub?.innerText ?? ""}`;
+}
+
+/** Fire-and-forget after result is shown so Save can reuse `exportCanvas` when unchanged. */
+function startExportCanvasPrefetch() {
+  const gen = (state.exportPrefetch.runId += 1);
+  state.exportPrefetch.snapshotKey = null;
+  state.exportPrefetch.promise = exportCollageToCanvas()
+    .then((ok) => {
+      if (gen !== state.exportPrefetch.runId) return;
+      if (ok) {
+        state.exportPrefetch.snapshotKey = collageExportSnapshotKey();
+      } else {
+        state.exportPrefetch.promise = null;
+        state.exportPrefetch.snapshotKey = null;
+        return Promise.reject(new Error("export incomplete"));
+      }
+    })
+    .catch((err) => {
+      if (gen !== state.exportPrefetch.runId) return;
+      console.warn("[exportCanvasPrefetch]", err);
+      state.exportPrefetch.promise = null;
+      state.exportPrefetch.snapshotKey = null;
+    });
+}
+
+/** Awaits background export if still running; re-runs export when titles/photos changed vs prefetch. */
+async function ensureCollageCanvasReadyForDownload() {
+  const photos = sortedPhotosForCollage();
+  if (!photos.length) return;
+
+  const { exportPrefetch } = state;
+  if (exportPrefetch.promise) {
+    try {
+      await exportPrefetch.promise;
+    } catch {
+      /* prefetch failed — state cleared in catch */
+    }
+  }
+
+  if (exportPrefetch.snapshotKey && exportPrefetch.snapshotKey === collageExportSnapshotKey()) {
+    return;
+  }
+
+  const ok = await exportCollageToCanvas();
+  if (ok) state.exportPrefetch.snapshotKey = collageExportSnapshotKey();
+}
+
 async function exportCollageToCanvas() {
   await document.fonts.ready;
   await document.fonts.load('26px "Nothing You Could Do"');
@@ -1977,14 +2049,14 @@ async function exportCollageToCanvas() {
   await waitForResultPaperImage();
 
   const photos = sortedPhotosForCollage();
-  if (!photos.length) return;
+  if (!photos.length) return false;
 
   let scene;
   try {
     scene = await buildResultScene();
   } catch (err) {
     console.error("[exportCollageToCanvas] buildResultScene failed:", err);
-    return;
+    return false;
   }
   const frameItems = [...(scene.frames ?? [])].sort((a, b) => a.z - b.z);
 
@@ -2154,6 +2226,7 @@ async function exportCollageToCanvas() {
       drawTextBlock(subText, 26, 28, px(sGeo.cx), px(sGeo.cy), sGeo.rotation, sGeo.maxWidth);
     }
   }
+  return true;
 }
 
 document.querySelector("#openUpload").addEventListener("click", (event) => {
@@ -2214,7 +2287,7 @@ document.querySelector("#makeDump").addEventListener("click", async (event) => {
 document.querySelector("#editAgain").addEventListener("click", () => showScreen("upload"));
 
 document.querySelector("#saveImage").addEventListener("click", async () => {
-  await exportCollageToCanvas();
+  await ensureCollageCanvasReadyForDownload();
   const link = document.createElement("a");
   link.download = "dump.png";
   link.href = exportCanvas.toDataURL("image/png");
