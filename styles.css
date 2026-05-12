@@ -207,8 +207,8 @@ button {
 .loading-reading-dots {
   position: absolute;
   /* PNG "the vibe" — 텍스트 오른쪽 끝에 점 붙임 */
-  left: 60%;
-  top: 51%;
+  left: 62;
+  top: 52%;
   transform: none;
   z-index: 1;
   margin: 0;
