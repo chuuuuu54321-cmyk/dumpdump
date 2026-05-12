@@ -142,18 +142,18 @@ function sanitizeCollageCopyNote(value, maxLen) {
 
 const VISION_CUTOUT_PROMPT = `Look at this image and answer one question:
 
-"Is a real human OR animal clearly the MAIN subject of the photo — the thing the viewer is meant to notice first?"
+"Is a real human clearly the MAIN subject of the photo — the thing the viewer is meant to notice first?"
 
-Answer true when:
-- One real person (any age) is clearly the primary subject
-- A pet or animal (dog, cat, etc.) is clearly the main subject (close-up, portrait, dominant in frame)
+"Human" includes every age: newborn, baby, toddler, child, teen, and adult. Do NOT treat infants or kids differently from adults. If a baby or child is clearly the dominant focus (portrait, close-up, held baby as the hero of the frame, etc.), answer true the same as you would for an adult portrait.
+
+Answer true ONLY when one real person (any age) is clearly the primary subject — their face and/or body fills the intent of the shot (portrait, selfie, family shot where one child/baby is clearly the main focus, etc.).
 
 Answer false for:
 - Buildings, architecture, or cityscapes as the main subject
 - Food, dishes, or drinks as the hero
-- Pure landscapes, nature, sky, oceans without a person or animal as the clear main subject
-- Objects, vehicles, screenshots, art/illustrations
-- Tiny or distant people/animals where the scene is clearly the main subject
+- Pure landscapes, nature, sky, oceans without a person as the clear main subject
+- Pets, objects, vehicles, screenshots, art/illustrations, or crowds where no single person is clearly primary
+- Tiny or distant people where the scene (not the person) is clearly the main subject
 
 Reply with ONLY valid JSON (no markdown), one line:
 {"person_main_subject":true|false}`;
@@ -495,9 +495,7 @@ app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
   console.log(`[remove-bg] server: received "${displayName}" (${kb} KB)`);
 
   try {
-    const mime = req.file.mimetype || "image/jpeg";
-    const blob = new Blob([req.file.buffer], { type: mime });
-    const result = await removeBackground(blob);
+    const result = await removeBackground(req.file.buffer);
     const buf = Buffer.from(await result.arrayBuffer());
 
     console.log(`[remove-bg] server: OK "${displayName}" png_bytes=${buf.length}`);
@@ -512,14 +510,6 @@ app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
 app.use(express.static(__dirname));
 
 const PORT = Number(process.env.PORT, 10) || 3000;
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.error(`Dump Dump static + API → http://localhost:${PORT}`);
-  try {
-    const tiny = await sharp({ create: { width: 10, height: 10, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
-    const blob = new Blob([tiny], { type: "image/png" });
-    await removeBackground(blob);
-    console.error("[remove-bg] model warmed up ✓");
-  } catch {
-    console.error("[remove-bg] warmup done");
-  }
 });

@@ -168,7 +168,7 @@ button {
   background-image: url("./assets/screen-3.png");
 }
 
-/* Loading: reading.png + “...” overlay */
+/* Loading: reading.png + animated “...” under baked-in title */
 .screen[data-screen="loading"] {
   flex-direction: column;
   align-items: stretch;
@@ -196,23 +196,32 @@ button {
   pointer-events: none;
 }
 
-.loading-full__dots {
+/* Loading: reading.png + animated dots only (phrase is baked into PNG) */
+.loading-reading-dots {
   position: absolute;
-  top: 58%;
-  left: 43%;
-  transform: translateX(-50%);
+  /* PNG "the vibe" — "vibe" 오른쪽 끝에 점 붙임 */
+  left: 64%;
+  top: 46%;
+  transform: none;
   z-index: 1;
-  font-family: "Yabonelist", "Comic Sans MS", cursive;
-  font-size: 38px;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  color: #2a1f1a;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  text-align: left;
+}
+
+.loading-reading-dots__chars {
   display: inline-block;
   overflow: hidden;
   white-space: nowrap;
   width: 1ch;
+  font-family: "Yabonelist", "Comic Sans MS", cursive;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #2a1f1a;
+  vertical-align: top;
   animation: loading-dots-steps 1.5s steps(3, end) infinite;
-  pointer-events: none;
 }
 
 @keyframes loading-dots-steps {

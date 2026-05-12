@@ -735,32 +735,50 @@ function centerAvoidsUi(px, py) {
   return px >= 14 && px <= RESULT_STAGE_W - 14 && py >= 36 && py <= RESULT_STAGE_H - 96;
 }
 
-/** 항상 1개: Vision과 무관하게 붙는 기본 스티커 후보 */
-const BASE_ALWAYS_STICKERS = ["Hearts.svg", "spark, sparkle, 26.svg", "white heart 2.svg"];
-
-/** Claude Vision → sticker filenames under `assets/stickers/` (actual names on disk). */
+/** Claude Vision → sticker filenames under `assets/stickers/` (tape1은 여기에 넣지 않음 — 폴라 상단 고정). */
 const VIBE_STICKER_POOLS = {
   party: [
     "Cake-1--Streamline-Fun-Stickers.svg",
     "cake.svg",
-    "party.svg",
     "Happy cup.svg",
+    "Balloon.svg",
+    "candy.svg",
+    "hahaha.svg",
+    "Ice cream.svg",
   ],
   nature_travel: [
     "beach, wave, doodle, water, sea, ocean, 2.svg",
     "tree.svg",
     "Flower-2--Streamline-Fun-Stickers.svg",
     "Rain cloud.svg",
+    "Flower.svg",
+    "Sun.svg",
+    "cherry.svg",
   ],
   daily_mood: [
     "Hearts.svg",
-    "white heart 2.svg",
     "spark, sparkle, 26.svg",
+    "spark, sparks, sparkle, stars, 30.svg",
     "love it.svg",
     "nice.svg",
+    "Shinning.svg",
+    "Balloon.svg",
+    "candy.svg",
+    "hahaha.svg",
+    "rabbit.svg",
   ],
-  animal: ["cat.svg", "cat 2.svg", "dog.svg"],
-  fallback: ["spark, sparkle, 26.svg", "Hearts.svg", "white heart 2.svg"],
+  animal: ["cat.svg", "cat 2.svg", "dog.svg", "rabbit.svg"],
+  fallback: [
+    "black smile.svg",
+    "white smile.svg",
+    "Smile--Streamline-Fun-Stickers.svg",
+    "Wow--Streamline-Fun-Stickers.svg",
+    "oh.svg",
+    "fire.svg",
+    "sleeping.svg",
+    "computer.svg",
+    "sticker1.svg",
+  ],
 };
 
 function normalizeVibeKey(v) {
@@ -910,37 +928,15 @@ function buildStickerAnchorPoints(layoutItems, photoCount, rand) {
 }
 
 /**
- * 콜라주당 스티커 5~6개 고정: 기본 1(Hearts / spark / white heart) + 바이브 2~3 + 나머지 채움.
- * 앵커: 사진 모서리·사이 간격·제목 근처·여백. 너비 40~80px. tape1은 첫 폴라로이드만 별도.
+ * 바이브 풀에서 최대 5장만 배치. tape1.svg는 스티커 레이어에 넣지 않음(첫 폴라로이드 상단은 DOM/PNG에서 고정).
+ * 앵커: 사진 모서리·사이 간격·제목 근처·여백. 너비 40~80px.
  */
 function chooseVisionStickerPlacements(sorted, frames, cutouts, vibeRaw, rand) {
   const vibeKey = normalizeVibeKey(vibeRaw);
-  const total = 5 + Math.floor(rand() * 2);
-  const baseFile = BASE_ALWAYS_STICKERS[Math.floor(rand() * BASE_ALWAYS_STICKERS.length)];
-  const vibePool = [...(VIBE_STICKER_POOLS[vibeKey] || VIBE_STICKER_POOLS.fallback)];
-  const vibeN = 2 + Math.floor(rand() * 2);
-
-  const files = [baseFile];
-  const vibeShuffled = shuffle(
-    vibePool.filter((f) => f !== baseFile),
-    rand,
-  );
-  for (let i = 0; i < vibeShuffled.length && files.length < 1 + vibeN; i += 1) {
-    files.push(vibeShuffled[i]);
-  }
-  while (files.length < 1 + vibeN) {
-    files.push(vibePool[Math.floor(rand() * Math.max(1, vibePool.length))]);
-  }
-
-  const filler = shuffle(
-    [...new Set([...vibePool, ...BASE_ALWAYS_STICKERS, ...VIBE_STICKER_POOLS.fallback])],
-    rand,
-  );
-  let fillIdx = 0;
-  while (files.length < total) {
-    files.push(filler[fillIdx % filler.length]);
-    fillIdx += 1;
-  }
+  const poolRaw = VIBE_STICKER_POOLS[vibeKey] || VIBE_STICKER_POOLS.fallback;
+  const pool = [...new Set(poolRaw.filter((f) => f && f !== "tape1.svg"))];
+  const shuffled = shuffle(pool, rand);
+  const files = shuffled.slice(0, Math.min(5, shuffled.length));
 
   const layoutItems = collectLayoutItems(frames, cutouts);
   const photoRects = collectLayoutPhotoRects(frames, cutouts);
@@ -1493,7 +1489,7 @@ function buildFixedResultLayout(sorted, successfulPairs, remaining) {
   return { cutouts, frames, stickerLayoutPolaroids };
 }
 
-async function buildResultScene() {
+async function buildResultScene(options = {}) {
   refreshCutoutDebugFlagsFromUrl();
 
   const sortedAll = sortedPhotosForCollage();
@@ -1501,10 +1497,18 @@ async function buildResultScene() {
   const rand = mulberry32(seedFromPhotos(sorted));
   const photoKey = collagePhotosKey(sorted);
 
-  const [, vibeKey] = await Promise.all([
-    ensureVisionCutoutEligibility(sorted),
-    fetchVisionVibeStickers(sorted, photoKey),
-  ]);
+  let vibeKey;
+  if (options.skipVisionVibe) {
+    vibeKey = normalizeVibeKey(
+      state.collageVibeByPhotoKey?.key === photoKey ? state.collageVibeByPhotoKey.vibe : "fallback",
+    );
+  } else {
+    const [, vk] = await Promise.all([
+      ensureVisionCutoutEligibility(sorted),
+      fetchVisionVibeStickers(sorted, photoKey),
+    ]);
+    vibeKey = vk;
+  }
 
   const cutoutCandidates = selectCutoutCandidates(sorted, rand);
   console.log("[buildResultScene] cutout pipeline", {
@@ -1788,8 +1792,8 @@ async function enhanceResultSceneAsync(gen, ordered, pk, needAiText) {
   }
 }
 
-/** @returns {Promise<boolean>} `true` if the result DOM was rebuilt successfully. */
-async function renderResultCollage() {
+/** @param {{ fullBuild?: boolean }} [options] `fullBuild`: await remove.bg + full layout (used after loading screen prep). */
+async function renderResultCollage(options = {}) {
   refreshCutoutDebugFlagsFromUrl();
 
   const photos = sortedPhotosForCollage();
@@ -1809,7 +1813,19 @@ async function renderResultCollage() {
   const gen = ++renderResultCollageGeneration;
   const ordered = photos.length > 8 ? photos.slice(0, 8) : photos;
   const pk = collagePhotosKey(ordered);
-  const needAiText = pk !== state.collageTextPhotoKeyApplied;
+
+  if (options.fullBuild) {
+    let scene;
+    try {
+      scene = await buildResultScene({ skipVisionVibe: true });
+    } catch (err) {
+      console.error("[renderResultCollage] buildResultScene (full) failed:", err);
+      return false;
+    }
+    if (gen !== renderResultCollageGeneration) return false;
+    const ok = renderResultDomFromScene(scene, ordered.length, { applyTitleLayout: true });
+    return ok;
+  }
 
   /** Fast render first — never block on Vision. Enhancements stream in later. */
   let scene;
@@ -1824,6 +1840,7 @@ async function renderResultCollage() {
   const ok = renderResultDomFromScene(scene, ordered.length, { applyTitleLayout: true });
   if (!ok) return false;
 
+  const needAiText = pk !== state.collageTextPhotoKeyApplied;
   void enhanceResultSceneAsync(gen, ordered, pk, needAiText);
   return true;
 }
@@ -2170,13 +2187,24 @@ document.querySelector("#makeDump").addEventListener("click", async (event) => {
   }
   if (makeDumpInFlight) return;
   makeDumpInFlight = true;
+
+  const photos = sortedPhotosForCollage();
+  const ordered = photos.length > 8 ? photos.slice(0, 8) : photos;
+  const pk = collagePhotosKey(ordered);
+
   showScreen("loading");
   try {
-    const ok = await renderResultCollage();
+    await ensureVisionCutoutEligibility(ordered);
+    await fetchVisionVibeStickers(ordered, pk);
+    const copy = await fetchCollageCopyFromApi(ordered, pk);
+    applyCollageCopyToEditable(copy);
+    state.collageTextPhotoKeyApplied = pk;
+
+    const ok = await renderResultCollage({ fullBuild: true });
     if (ok) showScreen("result", { skipCollageRender: true });
     else showScreen("upload");
   } catch (err) {
-    console.error("[makeDump] renderResultCollage failed:", err);
+    console.error("[makeDump] pipeline failed:", err);
     showScreen("upload");
   } finally {
     makeDumpInFlight = false;
