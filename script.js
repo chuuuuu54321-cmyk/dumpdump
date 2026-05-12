@@ -2267,9 +2267,11 @@ document.querySelector("#makeDump").addEventListener("click", async (event) => {
 
   showScreen("loading");
   try {
-    await ensureVisionCutoutEligibility(ordered);
-    await fetchVisionVibeStickers(ordered, pk);
-    const copy = await fetchCollageCopyFromApi(ordered, pk);
+    const [, , copy] = await Promise.all([
+      ensureVisionCutoutEligibility(ordered),
+      fetchVisionVibeStickers(ordered, pk),
+      fetchCollageCopyFromApi(ordered, pk),
+    ]);
     applyCollageCopyToEditable(copy);
     state.collageTextPhotoKeyApplied = pk;
 
