@@ -547,6 +547,7 @@ function renderUploadGrid() {
       remove.textContent = "×";
       remove.addEventListener("click", (event) => {
         event.stopPropagation();
+        disposePrepareCutoutCacheEntry(photo.id);
         URL.revokeObjectURL(photo.url);
         delete state.visionCutoutEligibleByPhotoId[photo.id];
         delete state.analysisTagsByPhotoId[photo.id];
@@ -604,6 +605,7 @@ function openPhotoPicker() {
 }
 
 function resetAllUploadPhotos() {
+  clearAllPrepareCutoutPhotoCache();
   state.photos.forEach((photo) => {
     try {
       URL.revokeObjectURL(photo.url);
@@ -1343,91 +1345,124 @@ function loadImageFromObjectUrl(url) {
   });
 }
 
+/** Same `photo.id` → one `/api/remove-bg` (in-flight promise shared; settled result reused). */
+const prepareCutoutPhotoPromiseById = new Map();
+
+function disposePrepareCutoutCacheEntry(photoId) {
+  const p = prepareCutoutPhotoPromiseById.get(photoId);
+  prepareCutoutPhotoPromiseById.delete(photoId);
+  if (!p) return;
+  void p.then((res) => {
+    if (res?.source === "remove-bg" && typeof res.url === "string" && res.url.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(res.url);
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+}
+
+function clearAllPrepareCutoutPhotoCache() {
+  for (const id of [...prepareCutoutPhotoPromiseById.keys()]) {
+    disposePrepareCutoutCacheEntry(id);
+  }
+}
+
 /**
  * Calls server `/api/remove-bg` (remove.bg key only on server). On failure returns original asset.
  */
 async function prepareCutoutPhoto(photo) {
-  const fileName = photo.file?.name || "photo.jpg";
-  console.log("[prepareCutoutPhoto] invoked", { photoId: photo.id, file: fileName });
+  const id = photo.id;
+  const hit = prepareCutoutPhotoPromiseById.get(id);
+  if (hit) return hit;
 
-  try {
-    const fd = new FormData();
-    fd.append("image", photo.file, photo.file.name || "photo.jpg");
+  const promise = (async () => {
+    const fileName = photo.file?.name || "photo.jpg";
+    console.log("[prepareCutoutPhoto] invoked", { photoId: photo.id, file: fileName });
 
-    console.log("[prepareCutoutPhoto] fetch POST /api/remove-bg starting", { photoId: photo.id, file: fileName });
+    try {
+      const fd = new FormData();
+      fd.append("image", photo.file, photo.file.name || "photo.jpg");
 
-    const res = await fetch("/api/remove-bg", {
-      method: "POST",
-      body: fd,
-    });
+      console.log("[prepareCutoutPhoto] fetch POST /api/remove-bg starting", { photoId: photo.id, file: fileName });
 
-    console.log("[prepareCutoutPhoto] fetch /api/remove-bg returned", {
-      file: fileName,
-      status: res.status,
-      ok: res.ok,
-      contentType: res.headers.get("content-type") || "",
-    });
+      const res = await fetch("/api/remove-bg", {
+        method: "POST",
+        body: fd,
+      });
 
-    const ct = res.headers.get("content-type") || "";
+      console.log("[prepareCutoutPhoto] fetch /api/remove-bg returned", {
+        file: fileName,
+        status: res.status,
+        ok: res.ok,
+        contentType: res.headers.get("content-type") || "",
+      });
 
-    if (!res.ok) {
-      let detail = await res.text();
-      try {
-        const j = JSON.parse(detail);
-        detail = j.error || j.detail || detail;
-      } catch {
-        /* plain text */
+      const ct = res.headers.get("content-type") || "";
+
+      if (!res.ok) {
+        let detail = await res.text();
+        try {
+          const j = JSON.parse(detail);
+          detail = j.error || j.detail || detail;
+        } catch {
+          /* plain text */
+        }
+        const msg = String(detail).slice(0, 300);
+        console.log("[remove-bg] response FAILED for", fileName, "| status:", res.status, "| message:", msg);
+        const err = new Error(`${res.status}${msg ? `: ${msg}` : ""}`);
+        err.httpStatus = res.status;
+        throw err;
       }
-      const msg = String(detail).slice(0, 300);
-      console.log("[remove-bg] response FAILED for", fileName, "| status:", res.status, "| message:", msg);
-      const err = new Error(`${res.status}${msg ? `: ${msg}` : ""}`);
-      err.httpStatus = res.status;
-      throw err;
+
+      if (!ct.includes("png")) {
+        const wrongTypeMsg = `expected image/png from /api/remove-bg, got ${ct || "unknown"}`;
+        console.log("[remove-bg] response FAILED for", fileName, "| status:", res.status, "| message:", wrongTypeMsg);
+        const err = new Error(wrongTypeMsg);
+        err.httpStatus = res.status;
+        throw err;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const img = await loadImageFromObjectUrl(url);
+
+      console.log("[remove-bg] response OK for", fileName, "| status:", res.status);
+      console.log("[remove-bg] PNG decoded — objectUrl + dimensions:", {
+        objectUrl: url,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+        file: fileName,
+      });
+
+      return {
+        photoId: photo.id,
+        url,
+        img,
+        source: "remove-bg",
+        meta: {},
+      };
+    } catch (err) {
+      const msg = String(err?.message || err);
+      let httpStatus = err.httpStatus;
+      if (httpStatus == null) {
+        const m = /^(\d{3})(?::|\s|$)/.exec(msg);
+        if (m) httpStatus = Number(m[1]);
+      }
+      console.log("remove.bg fallback used", "| file:", fileName, "| error:", msg);
+      return {
+        photoId: photo.id,
+        url: photo.url,
+        img: photo.img,
+        source: "passthrough-fallback",
+        meta: { error: msg, httpStatus },
+      };
     }
+  })();
 
-    if (!ct.includes("png")) {
-      const wrongTypeMsg = `expected image/png from /api/remove-bg, got ${ct || "unknown"}`;
-      console.log("[remove-bg] response FAILED for", fileName, "| status:", res.status, "| message:", wrongTypeMsg);
-      const err = new Error(wrongTypeMsg);
-      err.httpStatus = res.status;
-      throw err;
-    }
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const img = await loadImageFromObjectUrl(url);
-
-    console.log("[remove-bg] response OK for", fileName, "| status:", res.status);
-    console.log("[remove-bg] PNG decoded — objectUrl + dimensions:", {
-      objectUrl: url,
-      naturalWidth: img.naturalWidth,
-      naturalHeight: img.naturalHeight,
-      file: fileName,
-    });
-
-    return {
-      photoId: photo.id,
-      url,
-      img,
-      source: "remove-bg",
-      meta: {},
-    };
-  } catch (err) {
-    const msg = String(err?.message || err);
-    let httpStatus = err.httpStatus;
-    if (httpStatus == null) {
-      const m = /^(\d{3})(?::|\s|$)/.exec(msg);
-      if (m) httpStatus = Number(m[1]);
-    }
-    console.log("remove.bg fallback used", "| file:", fileName, "| error:", msg);
-    return {
-      photoId: photo.id,
-      url: photo.url,
-      img: photo.img,
-      source: "passthrough-fallback",
-      meta: { error: msg, httpStatus },
-    };
-  }
+  prepareCutoutPhotoPromiseById.set(id, promise);
+  return promise;
 }
 
 /**
